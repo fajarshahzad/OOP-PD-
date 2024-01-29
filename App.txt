@@ -1,0 +1,356 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+class User
+{
+    public string Username;
+    public string Password;
+    public string Role;
+
+    public User(string username, string password, string role)
+    {
+        Username = username;
+        Password = password;
+        Role = role;
+    }
+}
+
+class Product
+{
+    public int ProductId;
+    public string Name;
+    public double Price;
+
+    public override string ToString()// to prevent from exception
+    {
+        return $"ID: {ProductId}, Name: {Name}, Price: {Price:C}";
+    }
+}
+
+class Program
+{
+    private const string UsersFilePath = "users.txt";
+    private const string ProductsFilePath = "products.txt";
+
+    static List<User> users = new List<User>();
+    static List<Product> products = new List<Product>();
+
+    static void LoadData()
+    {
+        LoadUsers();
+        LoadProducts();
+    }
+
+    static void SaveData()
+    {
+        SaveUsers();
+        SaveProducts();
+    }
+
+    static void LoadUsers()
+    {
+        try
+        {
+            string[] lines = File.ReadAllLines(UsersFilePath);
+            foreach (var line in lines)
+            {
+                string[] values = line.Split(',');
+                if (values.Length == 3)
+                {
+                    User user = new User(values[0], values[1], values[2]);
+                    users.Add(user);
+                }
+            }
+        }
+        catch (FileNotFoundException)
+        {
+            // File doesn't exist yet
+        }
+    }
+
+    static void SaveUsers()
+    {
+        using (StreamWriter sw = new StreamWriter(UsersFilePath, false))
+        {
+            foreach (var user in users)
+            {
+                sw.WriteLine($"{user.Username},{user.Password},{user.Role}");
+            }
+        }
+    }
+
+    static void LoadProducts()
+    {
+        try
+        {
+            string[] lines = File.ReadAllLines(ProductsFilePath);
+            foreach (var line in lines)
+            {
+                string[] values = line.Split(',');
+                if (values.Length == 3)
+                {
+                    Product product = new Product
+                    {
+                        ProductId = int.Parse(values[0]),
+                        Name = values[1],
+                        Price = double.Parse(values[2])
+                    };
+                    products.Add(product);
+                }
+            }
+        }
+        catch (FileNotFoundException)
+        {
+            // File doesn't exist yet
+        }
+    }
+
+    static void SaveProducts()
+    {
+        using (StreamWriter sw = new StreamWriter(ProductsFilePath, false))
+        {
+            foreach (var product in products)
+            {
+                sw.WriteLine($"{product.ProductId},{product.Name},{product.Price}");
+            }
+        }
+    }
+
+    static bool AuthenticateUser(string username, string password, out User authenticatedUser)
+    {
+        authenticatedUser = users.Find(user => user.Username == username && user.Password == password);
+        return authenticatedUser != null;
+    }
+
+    static void SignUp(string username, string password, string role)
+    {
+        User newUser = new User(username, password, role);
+        users.Add(newUser);
+        SaveUsers();
+        Console.WriteLine("Sign up successful.");
+    }
+
+    static void SignIn()
+    {
+        Console.Write("Enter username: ");
+        string username = Console.ReadLine();
+
+        Console.Write("Enter password: ");
+        string password = Console.ReadLine();
+
+        if (AuthenticateUser(username, password, out User authenticatedUser))
+        {
+            Console.WriteLine($"Welcome, {authenticatedUser.Username}! Your role is {authenticatedUser.Role}.");
+            if (authenticatedUser.Role.ToLower() == "admin")
+            {
+                AdminMenu();
+            }
+            else
+            {
+                UserMenu();
+            }
+        }
+        else
+        {
+            Console.WriteLine("Invalid username or password.");
+        }
+    }
+
+    static void AdminMenu()
+    {
+        Console.Clear();
+        header();
+        while (true)
+        {
+            Console.WriteLine("\nAdmin Menu:");
+            Console.WriteLine("1. Add Product");
+            Console.WriteLine("2. View Products");
+            Console.WriteLine("3. Update Product");
+            Console.WriteLine("4. Delete Product");
+            Console.WriteLine("5. Logout");
+
+            Console.Write("Enter your choice: ");
+            string choice = Console.ReadLine();
+
+            switch (choice)
+            {
+                case "1":
+                    Console.Clear();
+                    header();
+                    AddProduct();
+                    break;
+                case "2":
+                    Console.Clear();
+                    header();
+                    ViewProducts();
+                    break;
+                case "3":
+                    Console.Clear();
+                    header();
+                    UpdateProduct();
+                    break;
+                case "4":
+                    Console.Clear();
+                    header();
+                    DeleteProduct();
+                    break;
+                case "5":
+                    return;
+                default:
+                    Console.WriteLine("Invalid choice. Try again.");
+                    break;
+            }
+        }
+    }
+
+    static void UserMenu()
+    {
+        Console.WriteLine("\nUser Menu:");
+        Console.WriteLine("1. View Products");
+        Console.WriteLine("2. Logout");
+
+        Console.Write("Enter your choice: ");
+        string choice = Console.ReadLine();
+
+        switch (choice)
+        {
+            case "1":
+                Console.Clear();
+                header();
+                ViewProducts();
+                break;
+            case "2":
+                return;
+            default:
+                Console.WriteLine("Invalid choice. Try again.");
+                break;
+        }
+    }
+
+    static void AddProduct()
+    {
+        Console.Write("Enter product name: ");
+        string name = Console.ReadLine();
+
+        Console.Write("Enter product price: ");
+        double price = double.Parse(Console.ReadLine());
+
+        Product newProduct = new Product
+        {
+            ProductId = products.Count + 1,
+            Name = name,
+            Price = price
+        };
+
+        products.Add(newProduct);
+        SaveProducts();
+        Console.WriteLine("Product added successfully.");
+    }
+
+    static void ViewProducts()
+    {
+        Console.WriteLine("\nProduct List:");
+        foreach (var product in products)
+        {
+            Console.WriteLine(product);
+        }
+    }
+
+    static void UpdateProduct()
+    {
+        Console.Write("Enter the ID of the product to update: ");
+        int productId = int.Parse(Console.ReadLine());
+
+        Product productToUpdate = products.Find(p => p.ProductId == productId);
+
+        if (productToUpdate != null)
+        {
+            Console.Write("Enter new product name: ");
+            productToUpdate.Name = Console.ReadLine();
+
+            Console.Write("Enter new product price: ");
+            productToUpdate.Price = double.Parse(Console.ReadLine());
+
+            SaveProducts();
+            Console.WriteLine("Product updated successfully.");
+        }
+        else
+        {
+            Console.WriteLine("Product not found.");
+        }
+    }
+
+    static void DeleteProduct()
+    {
+        Console.Write("Enter the ID of the product to delete: ");
+        int productId = int.Parse(Console.ReadLine());
+
+        Product productToDelete = products.Find(p => p.ProductId == productId);
+
+        if (productToDelete != null)
+        {
+            products.Remove(productToDelete);
+            SaveProducts();
+            Console.WriteLine("Product deleted successfully.");
+        }
+        else
+        {
+            Console.WriteLine("Product not found.");
+        }
+
+    }
+    static void header()
+    {
+        Console.WriteLine("Service Nest");
+
+    }
+
+    static void Main()
+
+    {
+        LoadData();
+        header();
+        while (true)
+        {
+            Console.WriteLine("\nMain Menu:");
+            Console.WriteLine("1. Sign In");
+            Console.WriteLine("2. Sign Up");
+            Console.WriteLine("3. Exit");
+
+            Console.Write("Enter your choice: ");
+            string choice = Console.ReadLine();
+
+            switch (choice)
+            {
+                case "1":
+                    Console.Clear();
+                    header();
+                    SignIn();
+                    break;
+                case "2":
+                    Console.Clear();
+                    header();
+                    Console.Write("Enter username: ");
+                    string username = Console.ReadLine();
+
+                    Console.Write("Enter password: ");
+                    string password = Console.ReadLine();
+
+                    Console.Write("Enter role (admin/user): ");
+                    string role = Console.ReadLine();
+
+                    SignUp(username, password, role);
+                    break;
+                case "3":
+                    SaveData();
+                    Environment.Exit(0);
+                    break;
+                default:
+                    Console.WriteLine("Invalid choice. Try again.");
+                    break;
+            }
+        }
+
+    }
+}
